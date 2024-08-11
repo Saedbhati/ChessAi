@@ -4,6 +4,7 @@
 #include <string>
 #include <cmath>
 #include "pieces.h"
+#include "CheckandPin.h"
 
 using namespace std;
 
@@ -93,45 +94,74 @@ public:
 
     U64 squareIndex = 1ULL << (8 * rank + file);
     cout << "Possible Move: ";
-
-    if (squareIndex & pieces["whitePawns"]) {
-        Move(whitePawn(rank, squareIndex, selectedpiece, filemapping, blackPieces), "whitePawns", squareIndex);
-    }  
-    else if (squareIndex & pieces["blackPawns"]) {
-        Move(blackPawn(rank, squareIndex, selectedpiece, filemapping, whitePieces), "blackPawns", squareIndex);
-    }
-    else if (squareIndex & pieces["whiteKnights"]) {
-        Move(Knight(rank, file, squareIndex, pieces, whitePieces, blackPieces), "whiteKnights", squareIndex);
-    } 
-    else if (squareIndex & pieces["blackKnights"]) {
-        Move(Knight(rank, file, squareIndex, pieces, whitePieces, blackPieces), "blackKnights", squareIndex);
-    }
-    else if (squareIndex & pieces["whiteKing"]) {
-        Move(King(rank, file, squareIndex, pieces, whitePieces, blackPieces), "whiteKing", squareIndex);
+    if(squareIndex & whitePieces&& turn ==0){
+            if (squareIndex & pieces["whitePawns"]) {
+            Move(whitePawn(rank, squareIndex, selectedpiece, filemapping, blackPieces), "whitePawns", squareIndex);
+        } 
+        else if (squareIndex & pieces["whiteKnights"]) {
+            Move(Knight(rank, file, squareIndex, pieces, whitePieces, blackPieces), "whiteKnights", squareIndex);
+        } else if (squareIndex & pieces["whiteKing"]) {
+            Move(King(rank, file, squareIndex, pieces, whitePieces, blackPieces), "whiteKing", squareIndex);
 
 
-    }
-    else if ( squareIndex & pieces["blackKing"]) {
-        Move(King(rank, file, squareIndex, pieces, whitePieces, blackPieces), "blackKing", squareIndex);
-    } else if (squareIndex & pieces["whiteRooks"]) {
-        U64 lookup = Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces);
-        Move(Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces), "whiteRooks", squareIndex);
+        }else if (squareIndex & pieces["whiteRooks"]) {
+            U64 lookup = Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            Move(Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces), "whiteRooks", squareIndex);
 
-    }
-    else if ( squareIndex & pieces["blackRooks"]) {
-        U64 lookup = Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces);
-        Move(Rook(rank,file,squareIndex, pieces,whitePieces,blackPieces),"blackRooks",squareIndex);
-    }
-    else if (squareIndex & pieces["blackBishops"] || squareIndex & pieces["whiteBishops"]) {
-        U64 lookup = Bishop(rank, file, squareIndex, pieces, whitePieces, blackPieces);
-        Move(lookup, (squareIndex & pieces["whiteBishops"]) ? "whiteBishops" : "blackBishops", squareIndex);
-        return lookup;
-    } else if (squareIndex & pieces["whiteQueens"] || squareIndex & pieces["blackQueens"]) {
-        U64 lookup = 0;
-        lookup |= Bishop(rank, file, squareIndex, pieces, whitePieces, blackPieces);
-        lookup |= Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces);
-        Move(lookup, (squareIndex & pieces["whiteQueens"]) ? "whiteQueens" : "blackQueens", squareIndex);
-        return lookup;
+        }
+        else if(squareIndex & pieces["whiteBishops"]){
+            U64 lookup = Bishop(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            Move(lookup, "whiteBishops", squareIndex);
+            return lookup;
+
+        }
+        else if (squareIndex & pieces["whiteQueens"]  ) {
+            U64 lookup = 0;
+            lookup |= Bishop(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            lookup |= Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            Move(lookup,   "whiteQueens" , squareIndex);
+            return lookup;
+        }
+        
+
+    }else if(squareIndex & blackPieces&& turn ==1){
+
+     
+        if (squareIndex & pieces["blackPawns"]) {
+            Move(blackPawn(rank, squareIndex, selectedpiece, filemapping, whitePieces), "blackPawns", squareIndex);
+        }
+        
+        else if (squareIndex & pieces["blackKnights"]) {
+            Move(Knight(rank, file, squareIndex, pieces, whitePieces, blackPieces), "blackKnights", squareIndex);
+        }
+        
+        else if ( squareIndex & pieces["blackKing"]) {
+            Move(King(rank, file, squareIndex, pieces, whitePieces, blackPieces), "blackKing", squareIndex);
+        } 
+        else if ( squareIndex & pieces["blackRooks"]) {
+            U64 lookup = Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            Move(Rook(rank,file,squareIndex, pieces,whitePieces,blackPieces),"blackRooks",squareIndex);
+        }
+        
+        else if (squareIndex & pieces["blackBishops"] ) {
+            U64 lookup = Bishop(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            Move(lookup, "blackBishops", squareIndex);
+
+        } 
+        else if(squareIndex & pieces["blackQueens"]){
+            U64 lookup = 0;
+            lookup |= Bishop(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            lookup |= Rook(rank, file, squareIndex, pieces, whitePieces, blackPieces);
+            Move(lookup, "blackQueens", squareIndex);
+
+        }
+       
+    }else{
+        if(turn==0){
+            cout<<"White Turn";
+        }else{
+            cout<<"Black Trun";
+        }
     }
 
     cout << endl;
@@ -159,6 +189,12 @@ public:
             blackPieces |= squareIndex;
             whitePieces &= ~squareIndex; 
         }
+        if(turn==0){
+            turn=1;
+        }else{
+            turn=0;
+        }
+        isWhiteKingCheck(blackPieces,pieces);
     } else {
         cout << "Invalid move. Try again." << endl;
     }

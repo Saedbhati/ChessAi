@@ -9,9 +9,4 @@ int main(){
 
        Chess.Game_input();
     }
-    
-   
-
-
-
 }
