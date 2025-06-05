@@ -29,3 +29,19 @@ jobs:
         env:
           RESULTS: ${{ steps.update_worksheet.outputs.results }}
         run: echo "$RESULTS" | jq
+
+      - name: Update Google Sheet Test
+        id: update_test
+        uses: jroehl/gsheet.action@v2.0.0
+        with:
+          spreadsheetId: 1tXO_vjGR6O7b0MQ1NZRvtZvqkHoHPDlw_MnMo8eyyJA
+          commands: |
+            [
+              { "command": "updateData", "args": {
+                  "worksheetTitle": "Integrations",
+                  "data": [["Test Update"]]
+              }}
+            ]
+        env:
+          GSHEET_CLIENT_EMAIL: ${{ secrets.GSHEET_CLIENT_EMAIL }}
+          GSHEET_PRIVATE_KEY: ${{ secrets.GSHEET_PRIVATE_KEY }}
