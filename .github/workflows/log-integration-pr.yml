@@ -8,7 +8,7 @@ jobs:
       - id: 'update_worksheet'
         uses: jroehl/gsheet.action@v2.0.0 # you can specify '@release' to always have the latest changes
         with:
-          spreadsheetId: <spreadsheetId>
+          spreadsheetId: 1tXO_vjGR6O7b0MQ1NZRvtZvqkHoHPDlw_MnMo8eyyJA
           commands: | # list of commands, specified as a valid JSON string
             [
               { "command": "addWorksheet", "args": { "worksheetTitle": "<worksheetTitle>" }},
