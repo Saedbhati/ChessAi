@@ -1,0 +1,37 @@
+name: Log Integration PR to Google Sheet
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  log-pr-to-sheet:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Extract PR Info
+      id: extract
+      shell: bash
+      run: |
+        title=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH")
+        body=$(jq -r .pull_request.body "$GITHUB_EVENT_PATH")
+        repo_url=$(echo "$body" | grep -oE '(https?://[^ )"]+)' | head -1)
+        labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | paste -sd "," -)
+        author=$(jq -r .pull_request.user.login "$GITHUB_EVENT_PATH")
+        pr_url=$(jq -r .pull_request.html_url "$GITHUB_EVENT_PATH")
+        date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        echo "integration_name=$title" >> $GITHUB_OUTPUT
+        echo "repo_url=$repo_url" >> $GITHUB_OUTPUT
+        echo "categories=$labels" >> $GITHUB_OUTPUT
+        echo "submitted_by=$author" >> $GITHUB_OUTPUT
+        echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+        echo "date=$date" >> $GITHUB_OUTPUT
+
+    - name: Append Row to Google Sheet
+      uses: jroehl/gsheet.action@v2.1.1
+      with:
+        args: appendData --data "[[\"${{ steps.extract.outputs.integration_name }}\",\"${{ steps.extract.outputs.repo_url }}\",\"${{ steps.extract.outputs.categories }}\",\"${{ steps.extract.outputs.submitted_by }}\",\"${{ steps.extract.outputs.pr_url }}\",\"${{ steps.extract.outputs.date }}\"]]" --spreadsheetId "${{ secrets.SHEET_ID }}"
+      env:
+        GSHEET_CLIENT_EMAIL: ${{ secrets.GSHEET_CLIENT_EMAIL }}
+        GSHEET_PRIVATE_KEY: ${{ secrets.GSHEET_PRIVATE_KEY }}
