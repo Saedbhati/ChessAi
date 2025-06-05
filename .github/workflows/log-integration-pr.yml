@@ -40,6 +40,24 @@ jobs:
           "client_x509_cert_url": ""
         }' > service_account.json
 
+    - name: Extract PR Info
+      run: |
+        title=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH" || echo "Unknown Title")
+        body=$(jq -r .pull_request.body "$GITHUB_EVENT_PATH" || echo "")
+        repo_url=$(echo "$body" | grep -oE '(https?://[^ )"]+)' | head -1 || echo "Unknown Repo URL")
+        labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | paste -sd "," - || echo "No Labels")
+        author=$(jq -r .pull_request.user.login "$GITHUB_EVENT_PATH" || echo "Unknown Author")
+        pr_url=$(jq -r .pull_request.html_url "$GITHUB_EVENT_PATH" || echo "Unknown PR URL")
+        date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+        echo "integration_name=$title" >> $GITHUB_OUTPUT
+        echo "repo_url=$repo_url" >> $GITHUB_OUTPUT
+        echo "categories=$labels" >> $GITHUB_OUTPUT
+        echo "submitted_by=$author" >> $GITHUB_OUTPUT
+        echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+        echo "date=$date" >> $GITHUB_OUTPUT
+      shell: bash
+
     - name: Add PR to Google Sheet
       env:
         PR_TITLE: ${{ github.event.pull_request.title }}
