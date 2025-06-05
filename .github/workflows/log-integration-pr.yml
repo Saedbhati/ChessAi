@@ -1,78 +1,25 @@
-name: Add PR to Google Sheets
-
-on:
-  pull_request:
-    types: [opened, reopened]
+name: gsheet.action test
+on: push
 
 jobs:
-  add-pr-to-sheets:
+  fetch:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install gspread oauth2client
-
-    - name: Create service_account.json
-      run: |
-        echo "${{ secrets.GSHEET_PRIVATE_KEY }}" > private_key.txt
-        # Format the private key correctly
-        cat private_key.txt | sed 's/\\n/\\n/g' > private_key_cleaned.txt
-        echo '{
-          "type": "service_account",
-          "project_id": "dummy",
-          "private_key_id": "dummy",
-          "private_key": '\"'$(cat private_key_cleaned.txt)'\"',
-          "client_email": "${{ secrets.GSHEET_CLIENT_EMAIL }}",
-          "client_id": "dummy",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": ""
-        }' > service_account.json
-
-    - name: Extract PR Info
-      run: |
-        title=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH" || echo "Unknown Title")
-        body=$(jq -r .pull_request.body "$GITHUB_EVENT_PATH" || echo "")
-        repo_url=$(echo "$body" | grep -oE '(https?://[^ )"]+)' | head -1 || echo "Unknown Repo URL")
-        labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | paste -sd "," - || echo "No Labels")
-        author=$(jq -r .pull_request.user.login "$GITHUB_EVENT_PATH" || echo "Unknown Author")
-        pr_url=$(jq -r .pull_request.html_url "$GITHUB_EVENT_PATH" || echo "Unknown PR URL")
-        date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    
-        echo "integration_name=$title" >> $GITHUB_OUTPUT
-        echo "repo_url=$repo_url" >> $GITHUB_OUTPUT
-        echo "categories=$labels" >> $GITHUB_OUTPUT
-        echo "submitted_by=$author" >> $GITHUB_OUTPUT
-        echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
-        echo "date=$date" >> $GITHUB_OUTPUT
-      shell: bash
-
-    - name: Add PR to Google Sheet
-      env:
-        PR_TITLE: ${{ github.event.pull_request.title }}
-        PR_URL: ${{ github.event.pull_request.html_url }}
-        PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-        SHEET_ID: 1zt-ets8GaOJz5dR2FiI7QArFITRGtgmjMfY325hSggI
-      run: |
-        python <<EOF
-        import gspread
-        from oauth2client.service_account import ServiceAccountCredentials
-
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
-        client = gspread.authorize(creds)
-
-        sheet = client.open_by_key("${{ env.SHEET_ID }}").sheet1
-        sheet.append_row(["${{ env.PR_TITLE }}", "${{ env.PR_URL }}", "${{ env.PR_AUTHOR }}"])
-        EOF
+      - id: 'update_worksheet'
+        uses: jroehl/gsheet.action@v2.0.0 # you can specify '@release' to always have the latest changes
+        with:
+          spreadsheetId: <spreadsheetId>
+          commands: | # list of commands, specified as a valid JSON string
+            [
+              { "command": "addWorksheet", "args": { "worksheetTitle": "<worksheetTitle>" }},
+              { "command": "updateData", "args": { "data": [["A1", "A2", "A3"]] }},
+              { "command": "getData", "args": { "range": "'<worksheetTitle>'!A2:B3" } }
+            ]
+        env:
+          GSHEET_CLIENT_EMAIL: ${{ secrets.GSHEET_CLIENT_EMAIL }}
+          GSHEET_PRIVATE_KEY: ${{ secrets.GSHEET_PRIVATE_KEY }}
+      - name: dump results
+        env:
+          #  the output of the action can be found in ${{ steps.update_worksheet.outputs.results }}
+          RESULTS: ${{ steps.update_worksheet.outputs.results }}
+        run: echo "$RESULTS" | jq
