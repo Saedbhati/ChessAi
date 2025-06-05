@@ -1,25 +1,31 @@
 name: gsheet.action test
-on: push
+
+on:
+  push
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+
     steps:
-      - id: 'update_worksheet'
-        uses: jroehl/gsheet.action@v2.0.0 # you can specify '@release' to always have the latest changes
+      - name: Update Google Sheet
+        id: update_worksheet
+        uses: jroehl/gsheet.action@v2.0.0
         with:
           spreadsheetId: 1tXO_vjGR6O7b0MQ1NZRvtZvqkHoHPDlw_MnMo8eyyJA
-          commands: | # list of commands, specified as a valid JSON string
+          commands: |
             [
-              { "command": "addWorksheet", "args": { "worksheetTitle": "<worksheetTitle>" }},
-              { "command": "updateData", "args": { "data": [["A1", "A2", "A3"]] }},
-              { "command": "getData", "args": { "range": "'<worksheetTitle>'!A2:B3" } }
+              { "command": "addWorksheet", "args": { "worksheetTitle": "AutoWorksheet" }},
+              { "command": "updateData", "args": {
+                  "data": [["Integration Name", "Repository URL", "Categories", "Submitted By", "PR URL", "Date"]]
+                }},
+              { "command": "getData", "args": { "range": "'AutoWorksheet'!A1:F1" } }
             ]
         env:
           GSHEET_CLIENT_EMAIL: ${{ secrets.GSHEET_CLIENT_EMAIL }}
           GSHEET_PRIVATE_KEY: ${{ secrets.GSHEET_PRIVATE_KEY }}
-      - name: dump results
+
+      - name: Dump results
         env:
-          #  the output of the action can be found in ${{ steps.update_worksheet.outputs.results }}
           RESULTS: ${{ steps.update_worksheet.outputs.results }}
         run: echo "$RESULTS" | jq
