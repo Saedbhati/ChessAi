@@ -15,7 +15,6 @@ jobs:
           spreadsheetId: 1tXO_vjGR6O7b0MQ1NZRvtZvqkHoHPDlw_MnMo8eyyJA
           commands: |
             [
-              { "command": "addWorksheet", "args": { "worksheetTitle": "Integrations" }},
               { "command": "updateData", "args": {
                   "worksheetTitle": "Integrations",
                   "data": [["Integration Name", "Repository URL", "Categories", "Submitted By", "PR URL", "Date"]]
