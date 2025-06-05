@@ -1,37 +1,60 @@
-name: Log Integration PR to Google Sheet
+name: Add PR to Google Sheets
 
 on:
   pull_request:
     types: [opened, reopened]
 
 jobs:
-  log-pr-to-sheet:
+  add-pr-to-sheets:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Extract PR Info
-      id: extract
-      shell: bash
-      run: |
-        title=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH")
-        body=$(jq -r .pull_request.body "$GITHUB_EVENT_PATH")
-        repo_url=$(echo "$body" | grep -oE '(https?://[^ )"]+)' | head -1)
-        labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | paste -sd "," -)
-        author=$(jq -r .pull_request.user.login "$GITHUB_EVENT_PATH")
-        pr_url=$(jq -r .pull_request.html_url "$GITHUB_EVENT_PATH")
-        date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    - name: Checkout repo
+      uses: actions/checkout@v3
 
-        echo "integration_name=$title" >> $GITHUB_OUTPUT
-        echo "repo_url=$repo_url" >> $GITHUB_OUTPUT
-        echo "categories=$labels" >> $GITHUB_OUTPUT
-        echo "submitted_by=$author" >> $GITHUB_OUTPUT
-        echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
-        echo "date=$date" >> $GITHUB_OUTPUT
-
-    - name: Append Row to Google Sheet
-      uses: jroehl/gsheet.action@v2.1.1
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        args: appendData --data "[[\"${{ steps.extract.outputs.integration_name }}\",\"${{ steps.extract.outputs.repo_url }}\",\"${{ steps.extract.outputs.categories }}\",\"${{ steps.extract.outputs.submitted_by }}\",\"${{ steps.extract.outputs.pr_url }}\",\"${{ steps.extract.outputs.date }}\"]]" --spreadsheetId "${{ secrets.SHEET_ID }}"
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install gspread oauth2client
+
+    - name: Create service_account.json
+      run: |
+        echo "${{ secrets.GSHEET_PRIVATE_KEY }}" > private_key.txt
+        # Format the private key correctly
+        cat private_key.txt | sed 's/\\n/\\n/g' > private_key_cleaned.txt
+        echo '{
+          "type": "service_account",
+          "project_id": "dummy",
+          "private_key_id": "dummy",
+          "private_key": '\"'$(cat private_key_cleaned.txt)'\"',
+          "client_email": "${{ secrets.GSHEET_CLIENT_EMAIL }}",
+          "client_id": "dummy",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": ""
+        }' > service_account.json
+
+    - name: Add PR to Google Sheet
       env:
-        GSHEET_CLIENT_EMAIL: ${{ secrets.GSHEET_CLIENT_EMAIL }}
-        GSHEET_PRIVATE_KEY: ${{ secrets.GSHEET_PRIVATE_KEY }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+        PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        SHEET_ID: 1zt-ets8GaOJz5dR2FiI7QArFITRGtgmjMfY325hSggI
+      run: |
+        python <<EOF
+        import gspread
+        from oauth2client.service_account import ServiceAccountCredentials
+
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+        client = gspread.authorize(creds)
+
+        sheet = client.open_by_key("${{ env.SHEET_ID }}").sheet1
+        sheet.append_row(["${{ env.PR_TITLE }}", "${{ env.PR_URL }}", "${{ env.PR_AUTHOR }}"])
+        EOF
